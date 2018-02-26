@@ -7,6 +7,10 @@
 
 extern crate projectasiago_feta;
 
+///```
+/// let result = projectasiago_mish::hello_world();
+/// assert_eq!(result, "hi world fjdskl");
+///```
 pub fn hello_world() -> &'static str {
 	let s: &'static str = "hi world fjdskl";
 	return s;
