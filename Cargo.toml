@@ -1,0 +1,9 @@
+[package]
+name = "projectasiago_mish"
+version = "0.1.0"
+
+[dependencies]
+projectasiago_feta = "0.1.0"
+
+[patch.crates-io]
+projectasiago_feta = { path = "../feta" }
