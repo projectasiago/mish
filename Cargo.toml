@@ -4,6 +4,11 @@ version = "0.1.0"
 
 [dependencies]
 projectasiago_feta = "0.1.0"
+[dependencies.nom]
+version = "4.0.0-beta1"
+default-features = false
+features = []
+
 
 [patch.crates-io]
 projectasiago_feta = { path = "../feta" }
