@@ -3,6 +3,7 @@
 #![feature(lang_items)]
 #![feature(compiler_builtins_lib)]
 #![allow(unused_variables)]
+#![feature(concat_idents)]
 
 #![cfg_attr(feature = "no_std", no_std)]
 #![cfg_attr(feature = "no_std", feature(alloc))]
