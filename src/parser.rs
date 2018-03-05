@@ -67,10 +67,14 @@ named!(letter<char>, alt!(lletter | cletter));
 
 #[derive(Debug, PartialEq)]
 enum BinaryOperation {
+	// maths
 	Add(Expression),
 	Subtract(Expression),
 	Multiply(Expression),
 	Divide(Expression),
+	Modulo(Expression),
+	Power(Expression),
+	Root(Expression),
 }
 
 #[derive(Debug, PartialEq)]
@@ -103,6 +107,22 @@ named!(divide<BinaryOperation>, ws!(do_parse!(
 	expression: expr_level2 >>
 	(BinaryOperation::Divide(expression))
 )));
+named!(modulo<BinaryOperation>, ws!(do_parse!(
+	char!('%') >>
+	expression: expr_level2 >>
+	(BinaryOperation::Modulo(expression))
+)));
+
+named!(power<BinaryOperation>, ws!(do_parse!(
+	tag!("**") >>
+	expression: expr_level3 >>
+	(BinaryOperation::Power(expression))
+)));
+named!(root<BinaryOperation>, ws!(do_parse!(
+	tag!("//") >>
+	expression: expr_level3 >>
+	(BinaryOperation::Root(expression))
+)));
 
 fn binop(first: Expression, operations: Vec<BinaryOperation>) -> Expression {
 	if operations.len() == 0 {
@@ -125,12 +145,22 @@ named!(expr_level1<Expression>, ws!(do_parse!(
 	first: expr_level2 >>
 	operations: many0!(alt!(
 		multiply |
-		divide
+		divide |
+		modulo
 	)) >>
 	(binop(first, operations))
 )));
 
-named!(expr_level2<Expression>, ws!(alt!(
+named!(expr_level2<Expression>, ws!(do_parse!(
+	first: expr_level3 >>
+	operations: many0!(alt!(
+		power |
+		root
+	)) >>
+	(binop(first, operations))
+)));
+
+named!(expr_level3<Expression>, ws!(alt!(
 	hexnumber | // hex, oct, and bin must come first to prevent the number from being interpreted as decimal
 	octnumber |
 	binnumber |
@@ -213,24 +243,64 @@ pub fn test_expression() {
 	assert_eq!(expression(b"(0x12)x"), Ok((&b"x"[..], Expression::HexNumber(vec!['1', '2'], vec![]))));
 	assert_eq!(expression(b"(5"), Err(Incomplete(Size(1))));
 	
+	// all operations
+	assert_eq!(expression(b"2+4x"), Ok((&b"x"[..], Expression::BinaryOperation(
+		Box::new(Expression::DecNumber(vec!['2'], vec![])),
+		vec![BinaryOperation::Add(Expression::DecNumber(vec!['4'], vec![]))]
+	))));
+	assert_eq!(expression(b"2-4x"), Ok((&b"x"[..], Expression::BinaryOperation(
+		Box::new(Expression::DecNumber(vec!['2'], vec![])),
+		vec![BinaryOperation::Subtract(Expression::DecNumber(vec!['4'], vec![]))]
+	))));
+	assert_eq!(expression(b"2*4x"), Ok((&b"x"[..], Expression::BinaryOperation(
+		Box::new(Expression::DecNumber(vec!['2'], vec![])),
+		vec![BinaryOperation::Multiply(Expression::DecNumber(vec!['4'], vec![]))]
+	))));
+	assert_eq!(expression(b"2/4x"), Ok((&b"x"[..], Expression::BinaryOperation(
+		Box::new(Expression::DecNumber(vec!['2'], vec![])),
+		vec![BinaryOperation::Divide(Expression::DecNumber(vec!['4'], vec![]))]
+	))));
+	assert_eq!(expression(b"2%4x"), Ok((&b"x"[..], Expression::BinaryOperation(
+		Box::new(Expression::DecNumber(vec!['2'], vec![])),
+		vec![BinaryOperation::Modulo(Expression::DecNumber(vec!['4'], vec![]))]
+	))));
+	assert_eq!(expression(b"2**4x"), Ok((&b"x"[..], Expression::BinaryOperation(
+		Box::new(Expression::DecNumber(vec!['2'], vec![])),
+		vec![BinaryOperation::Power(Expression::DecNumber(vec!['4'], vec![]))]
+	))));
+	assert_eq!(expression(b"2//4x"), Ok((&b"x"[..], Expression::BinaryOperation(
+		Box::new(Expression::DecNumber(vec!['2'], vec![])),
+		vec![BinaryOperation::Root(Expression::DecNumber(vec!['4'], vec![]))]
+	))));
+	
 	// adding
 	assert_eq!(expression(b"2+4x"), Ok((&b"x"[..], Expression::BinaryOperation(
 		Box::new(Expression::DecNumber(vec!['2'], vec![])),
-		vec![BinaryOperation::Add(Expression::DecNumber(vec!['4'], vec![]))],
+		vec![BinaryOperation::Add(Expression::DecNumber(vec!['4'], vec![]))]
 	))));
 	assert_eq!(expression(b" 2 + 4 x"), Ok((&b"x"[..], Expression::BinaryOperation(
 		Box::new(Expression::DecNumber(vec!['2'], vec![])),
-		vec![BinaryOperation::Add(Expression::DecNumber(vec!['4'], vec![]))],
+		vec![BinaryOperation::Add(Expression::DecNumber(vec!['4'], vec![]))]
 	))));
 	
 	// multiplying
 	assert_eq!(expression(b"2*4x"), Ok((&b"x"[..], Expression::BinaryOperation(
 		Box::new(Expression::DecNumber(vec!['2'], vec![])),
-		vec![BinaryOperation::Multiply(Expression::DecNumber(vec!['4'], vec![]))],
+		vec![BinaryOperation::Multiply(Expression::DecNumber(vec!['4'], vec![]))]
 	))));
 	assert_eq!(expression(b" 2 * 4 x"), Ok((&b"x"[..], Expression::BinaryOperation(
 		Box::new(Expression::DecNumber(vec!['2'], vec![])),
-		vec![BinaryOperation::Multiply(Expression::DecNumber(vec!['4'], vec![]))],
+		vec![BinaryOperation::Multiply(Expression::DecNumber(vec!['4'], vec![]))]
+	))));
+	
+	// power
+	assert_eq!(expression(b"2**4x"), Ok((&b"x"[..], Expression::BinaryOperation(
+		Box::new(Expression::DecNumber(vec!['2'], vec![])),
+		vec![BinaryOperation::Power(Expression::DecNumber(vec!['4'], vec![]))]
+	))));
+	assert_eq!(expression(b" 2 ** 4 x"), Ok((&b"x"[..], Expression::BinaryOperation(
+		Box::new(Expression::DecNumber(vec!['2'], vec![])),
+		vec![BinaryOperation::Power(Expression::DecNumber(vec!['4'], vec![]))]
 	))));
 	
 	// multi
@@ -239,14 +309,14 @@ pub fn test_expression() {
 		vec![
 			BinaryOperation::Add(Expression::DecNumber(vec!['4'], vec![])),
 			BinaryOperation::Add(Expression::DecNumber(vec!['8'], vec![])),
-		],
+		]
 	))));
 	assert_eq!(expression(b"2*4*8x"), Ok((&b"x"[..], Expression::BinaryOperation(
 		Box::new(Expression::DecNumber(vec!['2'], vec![])),
 		vec![
 			BinaryOperation::Multiply(Expression::DecNumber(vec!['4'], vec![])),
 			BinaryOperation::Multiply(Expression::DecNumber(vec!['8'], vec![])),
-		],
+		]
 	))));
 	
 	// add and multiply
@@ -256,8 +326,8 @@ pub fn test_expression() {
 			Box::new(Expression::DecNumber(vec!['4'], vec![])),
 			vec![
 				BinaryOperation::Multiply(Expression::DecNumber(vec!['8'], vec![])),
-			],
-		))],
+			]
+		))]
 	))));
 	assert_eq!(expression(b"2*4+8x"), Ok((&b"x"[..], Expression::BinaryOperation(
 		Box::new(Expression::BinaryOperation(
@@ -266,24 +336,27 @@ pub fn test_expression() {
 				BinaryOperation::Multiply(Expression::DecNumber(vec!['4'], vec![])),
 			],
 		)),
-		vec![BinaryOperation::Add(Expression::DecNumber(vec!['8'], vec![]))],
+		vec![
+			BinaryOperation::Add(Expression::DecNumber(vec!['8'], vec![]))
+		]
 	))));
 	assert_eq!(expression(b"2*4+8*16x"), Ok((&b"x"[..], Expression::BinaryOperation(
 		Box::new(Expression::BinaryOperation(
 			Box::new(Expression::DecNumber(vec!['2'], vec![])),
 			vec![
 				BinaryOperation::Multiply(Expression::DecNumber(vec!['4'], vec![])),
-			],
+			]
 		)),
 		vec![
 			BinaryOperation::Add(Expression::BinaryOperation(
 				Box::new(Expression::DecNumber(vec!['8'], vec![])),
 				vec![
 					BinaryOperation::Multiply(Expression::DecNumber(vec!['1', '6'], vec![])),
-				],
+				]
 			))
-		],
+		]
 	))));
+	
 	assert_eq!(expression(b"2+4*8+16x"), Ok((&b"x"[..], Expression::BinaryOperation(
 		Box::new(Expression::DecNumber(vec!['2'], vec![])),
 		vec![
@@ -291,9 +364,9 @@ pub fn test_expression() {
 				Box::new(Expression::DecNumber(vec!['4'], vec![])),
 				vec![
 					BinaryOperation::Multiply(Expression::DecNumber(vec!['8'], vec![])),
-				],
+				]
 			)),
 			BinaryOperation::Add(Expression::DecNumber(vec!['1', '6'], vec![]))
-		],
+		]
 	))));
 }
