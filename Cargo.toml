@@ -5,6 +5,3 @@ version = "0.1.0"
 [dependencies]
 projectasiago_feta = { git = "https://github.com/projectasiago/feta" }
 nom = { version = "4.0.0-beta1", default-features = false }
-
-[patch.crates-io]
-projectasiago_feta = { path = "../feta" }
