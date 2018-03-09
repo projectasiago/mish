@@ -3,7 +3,7 @@ name = "projectasiago_mish"
 version = "0.1.0"
 
 [dependencies]
-projectasiago_feta = "0.1.0"
+projectasiago_feta = { git = "https://github.com/projectasiago/feta" }
 nom = { version = "4.0.0-beta1", default-features = false }
 
 [patch.crates-io]
