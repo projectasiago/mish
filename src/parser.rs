@@ -75,6 +75,30 @@ enum BinaryOperation {
 	Modulo(Expression),
 	Power(Expression),
 	Root(Expression),
+	Positive(Expression),
+	Negative(Expression),
+	
+	// logic
+	And(Expression),
+	Or(Expression),
+	Xor(Expression),
+	Not(Expression),
+	
+	// comparison
+	Equal,
+	NotEqual,
+	GreaterEqual,
+	LessEqual,
+	Greater,
+	Less,
+	
+	// binary stuff
+	BinOr,
+	BinAnd,
+	BinXor,
+	BinNot,
+	ShiftLeft,
+	ShiftRight,
 }
 
 #[derive(Debug, PartialEq)]
